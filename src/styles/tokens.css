@@ -1,0 +1,68 @@
+/**
+ * Design token layer.
+ *
+ * Visual direction: warm off-white surfaces, near-black typography, a single
+ * yellow accent used sparingly. Roughly 85–90% neutral, 10–15% accent.
+ *
+ * Accessibility notes baked into these values:
+ *  - `--color-accent` (#F4C400) sits at 1.65:1 on white. It can never be text,
+ *    and never the *only* signal for a state — every accent indicator in the UI
+ *    is paired with a weight or colour change that carries the meaning on its own.
+ *  - `--color-muted` is #6E6C67 rather than the lighter grey it reads as: the
+ *    lighter value measured 3.44:1 on the page background and failed AA for the
+ *    small meta text it is used on.
+ */
+
+@theme {
+  /* --------------------------------------------------------- surfaces */
+  --color-page: #f7f7f5;          /* warm off-white page ground */
+  --color-surface: #ffffff;       /* article + card surface */
+  --color-surface-secondary: #f2f2ef;
+  --color-surface-sunken: #edece8;
+
+  /* ---------------------------------------------------------- borders */
+  --color-hairline: #edece8;      /* barely-there separator */
+  --color-border: #e3e1dc;        /* default warm border */
+  --color-border-strong: #d3d0c8;
+  --color-border-interactive: #8d8a82; /* 3:1 — form controls only */
+
+  /* ------------------------------------------------------------- text */
+  --color-ink: #111111;         /* headings, active states, emphasis */
+  --color-body: #33312d;        /* long-form prose — warm near-black */
+  --color-secondary: #5f5f5f;   /* supporting copy, descriptions */
+  --color-muted: #6e6c67;       /* meta, counts, labels */
+
+  /* ----------------------------------------------------------- accent */
+  --color-accent: #f4c400;        /* indicators, underlines, markers */
+  --color-accent-soft: #faedb8;   /* filter highlight ground */
+  --color-accent-wash: #fdf8e4;
+
+  /* ----------------------------------------------------------- layout */
+  --spacing-sidebar: 300px;       /* 350px from xl up — see index.css */
+  --spacing-rail: 280px;
+  --spacing-measure: 47rem;       /* ~752px reading column */
+
+  /* ------------------------------------------------------ typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo,
+    Consolas, monospace;
+
+  /* Editorial scale. Display sizes carry negative tracking; small UI text
+     carries positive tracking so it stays legible at weight 500. */
+  --text-display: 3rem;           /* 48px — article h1 */
+  --text-title: 2rem;             /* 32px — section h2 */
+  --text-subtitle: 1.375rem;      /* 22px — h3 */
+  --text-lede: 1.0625rem;         /* 17px — intro paragraph */
+  --text-article: 1rem;           /* 16px — prose */
+  --text-ui: 0.875rem;            /* 14px */
+  --text-nav: 0.8125rem;          /* 13px — sidebar pages */
+  --text-nav-group: 0.875rem;     /* 14px — sidebar folders */
+  --text-micro: 0.75rem;          /* 12px — breadcrumbs, meta */
+  --text-eyebrow: 0.6875rem;      /* 11px — uppercase labels */
+
+  /* --------------------------------------------------------- motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 180ms;
+  --duration-base: 220ms;
+}

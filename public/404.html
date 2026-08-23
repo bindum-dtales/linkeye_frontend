@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Documentation Portal</title>
+    <script>
+      /*
+       * SPA fallback for static hosts that serve 404.html for unknown paths
+       * (GitHub Pages, and as a safety net elsewhere). Rewrites the requested
+       * deep URL into the app entry point without losing the path, so
+       * /docs/folder-1/introduction survives a hard refresh.
+       */
+      (function () {
+        var l = window.location
+        sessionStorage.setItem('spa:redirect', l.pathname + l.search + l.hash)
+        l.replace(l.origin + '/')
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>
