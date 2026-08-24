@@ -38,7 +38,7 @@ export const siteConfig: SiteConfig = {
   wordmarkSuffix: 'Docs',
   documentationTitle: 'Agentic AI NetOps Platform',
   tagline:
-    'A complete reference for navigating LinkEye — how each module works, how it connects to the rest of the platform, and how to perform the tasks NOC engineers, network managers and CIO stakeholders rely on most.',
+    'A complete reference for navigating LinkEye how each module works, how it connects to the rest of the platform, and how to perform the tasks NOC engineers, network managers and CIO stakeholders rely on most.',
   accentColor: '#f4c400',
   accentColorSoft: '#faedb8',
   footerText:

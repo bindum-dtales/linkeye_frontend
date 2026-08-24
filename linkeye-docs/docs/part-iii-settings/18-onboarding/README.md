@@ -1,7 +1,7 @@
 # 18. Onboarding
 
 Onboarding is the standard operating procedure for bringing
-infrastructure onto LinkEye — site registration, asset discovery, and
+infrastructure onto LinkEye site registration, asset discovery, and
 alert configuration, across three configurations: WAN-only, LAN-only, and
 Hybrid.
 
