@@ -30,6 +30,14 @@ export type IconName =
   | 'folder-open'
   | 'command'
   | 'arrow-up-right'
+  | 'chevron-up'
+  | 'trash'
+  | 'pencil'
+  | 'image'
+  | 'upload'
+  | 'eye'
+  | 'refresh'
+  | 'logout'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   'chevron-right': <path d="m9 18 6-6-6-6" />,
@@ -91,6 +99,32 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   command: <path d="M15 6a3 3 0 1 1 3 3h-3V6zM9 6a3 3 0 1 0-3 3h3V6zM15 18a3 3 0 1 0 3-3h-3v3zM9 18a3 3 0 1 1-3-3h3v3zM9 9h6v6H9z" />,
   'arrow-up-right': <path d="M7 17 17 7M9 7h8v8" />,
+
+  /* -- admin dashboard ---------------------------------------------------- */
+  'chevron-up': <path d="m6 15 6-6 6 6" />,
+  trash: (
+    <>
+      <path d="M4 7h16M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
+      <path d="M6 7v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7M10 11v6M14 11v6" />
+    </>
+  ),
+  pencil: <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3zM14.5 6.5l3 3" />,
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.5" />
+      <path d="m4 17 5-5 4 4 3-2 4 4" />
+    </>
+  ),
+  upload: <path d="M12 16V4m-5 5 5-5 5 5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />,
+  eye: (
+    <>
+      <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </>
+  ),
+  refresh: <path d="M20 11a8 8 0 1 0-.7 4M20 5v6h-6" />,
+  logout: <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10" />,
 }
 
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
