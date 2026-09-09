@@ -205,10 +205,12 @@ function TreeRow({
           >
             {node.title}
           </span>
-          {node.status === 'DRAFT' && (
+          {/* One dot, two meanings, both "not what readers see": an unpublished
+              node, or a published one with edits waiting behind it. */}
+          {(node.status === 'DRAFT' || node.hasDraft) && (
             <span
-              aria-label="Draft"
-              title="Draft"
+              aria-label={node.status === 'DRAFT' ? 'Draft' : 'Unpublished changes'}
+              title={node.status === 'DRAFT' ? 'Draft' : 'Unpublished changes'}
               className="size-1.5 shrink-0 rounded-full bg-[var(--color-accent)]"
             />
           )}

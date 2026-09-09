@@ -1,10 +1,23 @@
 /**
  * Folder / page editor.
  *
- * Holds a local draft of the selected node and pushes changes through
- * `PUT /api/docs/:id`. Preview deliberately saves first and renders the `html`
- * the backend returns — the markdown pipeline is never reimplemented here, so
- * what the editor previews is exactly what the portal will publish.
+ * Three states, and the difference between them is the whole publish workflow:
+ *
+ *   Unsaved changes — typed into the form, not sent anywhere yet.
+ *   Saved as a draft — stored by `PUT /api/docs/:id`. For a PUBLISHED node the
+ *     backend parks these in its draft columns, so readers keep seeing the
+ *     published version; for a DRAFT node there is nothing public to protect
+ *     and the save lands directly.
+ *   Published — `POST /api/docs/:id/publish` promotes the draft onto the live
+ *     version, which is the only action that changes what readers see.
+ *
+ * The editing buffer therefore seeds from `node.draft` when one exists and
+ * falls back to the published fields, so reopening a page shows the work in
+ * progress rather than the last published text.
+ *
+ * Preview deliberately saves first and renders the `html` the backend returns —
+ * the markdown pipeline is never reimplemented here, so what the editor
+ * previews is exactly what the portal will publish.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '@/components/primitives/Icon'
@@ -27,11 +40,16 @@ interface Draft {
   content: string
 }
 
+/**
+ * The buffer to edit: pending changes when the node has them, otherwise the
+ * published text. `slug` is never drafted — it rewrites `path` across the
+ * subtree, so the backend applies it immediately in both cases.
+ */
 const draftOf = (node: DocNode): Draft => ({
-  title: node.title,
+  title: node.draft?.title ?? node.title,
   slug: node.slug,
-  description: node.description ?? '',
-  content: node.content ?? '',
+  description: node.draft?.description ?? node.description ?? '',
+  content: node.draft?.content ?? node.content ?? '',
 })
 
 export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
@@ -65,13 +83,21 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
     }
   }, [nodeId])
 
+  // Measured against the working copy (`draftOf`), so typing back to the last
+  // saved draft clears "Unsaved changes" rather than comparing to what is live.
+  const saved = node ? draftOf(node) : null
   const dirty =
-    node != null &&
     draft != null &&
-    (draft.title !== node.title ||
-      draft.slug !== node.slug ||
-      draft.description !== (node.description ?? '') ||
-      draft.content !== (node.content ?? ''))
+    saved != null &&
+    (draft.title !== saved.title ||
+      draft.slug !== saved.slug ||
+      draft.description !== saved.description ||
+      draft.content !== saved.content)
+
+  /** Edits are waiting behind the published version, or are about to be. */
+  const pending = Boolean(node?.hasDraft) || dirty
+  /** Publishing is only meaningful when something would actually change. */
+  const canPublish = Boolean(node) && (pending || node!.status !== 'PUBLISHED')
 
   /** Saves and returns the fresh node, or null when the save failed. */
   const save = useCallback(async (): Promise<DocNode | null> => {
@@ -104,11 +130,13 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
     setBusy(true)
     setError(null)
     try {
-      // Save first so publishing never ships a stale body.
-      if (dirty) await save()
+      // Publish saves first, so the button always ships exactly what is on
+      // screen — never the previous draft.
+      if (dirty && !(await save())) return
       const updated = publish ? await api.docs.publish(node.id) : await api.docs.unpublish(node.id)
-      setNode((current) => (current ? { ...current, ...updated } : updated))
-      setNotice(publish ? 'Published to the public portal.' : 'Moved back to draft.')
+      setNode(updated)
+      setDraft(draftOf(updated))
+      setNotice(publish ? 'Published successfully. The public documentation now shows this version.' : 'Unpublished. Readers can no longer see this page.')
       onSaved(updated)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not change the publish state.')
@@ -117,9 +145,29 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
     }
   }
 
+  /** Drops pending edits and returns the editor to the published version. */
+  async function discard() {
+    if (!node) return
+    if (!window.confirm(`Discard unpublished changes to “${node.title}”? The published version stays as it is.`)) return
+    setBusy(true)
+    setError(null)
+    try {
+      const reverted = await api.docs.discardDraft(node.id)
+      setNode(reverted)
+      setDraft(draftOf(reverted))
+      setNotice('Unpublished changes discarded.')
+      onSaved(reverted)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not discard the changes.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function openPreview() {
     const current = dirty ? await save() : node
-    if (current) setPreview(current.html ?? '')
+    // Preview shows what Publish would make live: the draft when one exists.
+    if (current) setPreview(current.draft?.html ?? current.html ?? '')
   }
 
   async function remove() {
@@ -162,7 +210,7 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
         <span className="text-micro text-[var(--color-muted)]" title={node.path}>
           {node.path}
         </span>
-        <StatusPill status={node.status} />
+        <StatusPill status={node.status} hasDraft={pending} />
         {dirty && <span className="text-micro text-[var(--color-muted)]">Unsaved changes</span>}
 
         <div className="ml-auto flex items-center gap-2">
@@ -180,20 +228,47 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
             v{node.version}
           </Button>
           <Button variant="danger" iconOnly icon="trash" title="Delete" aria-label="Delete" onClick={() => void remove()} />
-          <Button onClick={() => void save()} disabled={!dirty || busy}>
-            {busy ? 'Saving…' : 'Save draft'}
-          </Button>
-          {node.status === 'PUBLISHED' ? (
+          {/* Only offered once there is something saved to throw away. */}
+          {node.hasDraft && !dirty && (
+            <Button variant="ghost" onClick={() => void discard()} disabled={busy}>
+              Discard changes
+            </Button>
+          )}
+          {node.status === 'PUBLISHED' && (
             <Button variant="secondary" onClick={() => void setPublished(false)} disabled={busy}>
               Unpublish
             </Button>
-          ) : (
-            <Button variant="primary" icon="check" onClick={() => void setPublished(true)} disabled={busy}>
-              Publish
-            </Button>
           )}
+          <Button onClick={() => void save()} disabled={!dirty || busy}>
+            {busy ? 'Saving…' : 'Save draft'}
+          </Button>
+          {/* Always present, including on an already-published page: republishing
+              an edit is the common case, and hiding the button behind the
+              published state is what made edits look like they never shipped. */}
+          <Button
+            variant="primary"
+            icon="check"
+            onClick={() => void setPublished(true)}
+            disabled={busy || !canPublish}
+            title={
+              canPublish
+                ? 'Save and make this version visible to readers'
+                : 'Nothing to publish — the live version already matches this one'
+            }
+          >
+            {node.status === 'PUBLISHED' ? 'Publish changes' : 'Publish'}
+          </Button>
         </div>
       </div>
+
+      {/* Reuses the folder-hint strip below, so the editor gains no new visual
+          language — just the one fact the workflow depends on. */}
+      {node.hasDraft && (
+        <p className="shrink-0 border-b border-[var(--color-hairline)] bg-[var(--color-accent-wash)] px-5 py-2 text-micro text-[var(--color-body)]">
+          Readers still see the published version. Press <strong className="font-semibold">Publish changes</strong> to
+          make these edits live.
+        </p>
+      )}
 
       {(error || notice) && (
         <div className="shrink-0 px-5 pt-3">

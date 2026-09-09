@@ -10,10 +10,9 @@
  * bodies still arrive lazily, now from the API instead of a code-split chunk.
  */
 import type { Crumb, DocFolder, DocHeading, DocIndex, DocNode, DocPage, NavRef, SearchEntry } from './docs.types'
+import { API_BASE_URL } from './apiBase'
 import { isFolder } from './docs.types'
 import { normalizePath } from './routing'
-
-const API_URL = (import.meta.env?.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '')
 
 /** One node of the backend's `/api/docs/index` payload. */
 interface ApiNode {
@@ -127,7 +126,13 @@ interface Envelope<T> {
 async function get<T>(path: string): Promise<T> {
   // No credentials and no Authorization header: the portal is a public reader,
   // so the backend's optional auth sees an anonymous request and hides drafts.
-  const response = await fetch(API_URL + path)
+  //
+  // `no-store` because documentation changes the moment an editor presses
+  // Publish. The backend already answers `Cache-Control: no-store`, but this
+  // also rules out the browser's heuristic freshness and any intermediary
+  // between Hostinger and the API, so a reader never holds a version the CMS
+  // has already replaced.
+  const response = await fetch(API_BASE_URL + path, { cache: 'no-store' })
   const body = (await response.json()) as Envelope<T>
   if (!response.ok || !body.success || body.data === undefined) {
     throw new Error(body.error?.message ?? `Request failed (${response.status})`)

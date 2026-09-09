@@ -98,6 +98,8 @@ cp .env.example .env      # VITE_API_URL -> the backend, default http://localhos
 npm run dev               # then open http://localhost:5173/admin
 ```
 
+Local development auto-detects `localhost` / `127.0.0.1` and always uses `http://localhost:4000`. For a production build, set `VITE_API_URL` to the public backend origin before running `npm run build`.
+
 The backend must be running and must list this origin in its `FRONTEND_URL` CORS
 allow-list. Sign in with the admin account created by the backend's `import-docs` /
 `create-admin` scripts.

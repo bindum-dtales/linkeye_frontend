@@ -9,7 +9,7 @@
  * markdown rendering and publish state. This module only transports.
  */
 
-export const API_URL = (import.meta.env?.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '')
+import { API_BASE_URL } from '@/lib/apiBase'
 
 const TOKEN_KEY = 'linkeye.admin.token'
 
@@ -65,13 +65,17 @@ async function request<T>(
 
   let response: Response
   try {
-    response = await fetch(API_URL + path, {
+    response = await fetch(API_BASE_URL + path, {
       method,
       headers,
+      // The dashboard must never read a cached tree or a cached body: it is the
+      // surface deciding what to publish, so a stale read there would publish
+      // the wrong text.
+      cache: 'no-store',
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', `Cannot reach the API at ${API_URL}. Is the backend running?`)
+    throw new ApiError(0, 'NETWORK_ERROR', `Cannot reach the API at ${API_BASE_URL}. Is the backend running?`)
   }
 
   let envelope: Envelope<T>
@@ -124,7 +128,14 @@ export interface NavRef {
   folderTitle: string
 }
 
-/** A node as the backend serialises it. Tree responses omit `content`/`html`. */
+/**
+ * A node as the backend serialises it. Tree responses omit `content`/`html`.
+ *
+ * `title`, `description`, `content` and `html` are always the PUBLISHED
+ * version — the text a reader currently sees. Unpublished edits live in
+ * `draft`, which the backend attaches only for a signed-in editor and only
+ * while `hasDraft` is true.
+ */
 export interface DocNode {
   id: string
   kind: 'folder' | 'page'
@@ -141,6 +152,10 @@ export interface DocNode {
   createdAt: string
   updatedAt: string
   headings: Heading[]
+  /** True when edits are saved but not yet published. */
+  hasDraft?: boolean
+  /** The unpublished edits themselves; absent when nothing is pending. */
+  draft?: { title: string; description: string; content: string; html: string }
   hasIndex?: boolean
   content?: string
   html?: string
@@ -223,8 +238,11 @@ export const api = {
     update: (id: string, patch: Partial<Omit<NodeDraft, 'type' | 'parentId'>>) =>
       request<DocNode>('PUT', `/api/docs/${id}`, patch),
     remove: (id: string) => request<{ deleted: boolean }>('DELETE', `/api/docs/${id}`),
+    /** Promotes any pending draft onto the live version and makes it public. */
     publish: (id: string) => request<DocNode>('POST', `/api/docs/${id}/publish`),
     unpublish: (id: string) => request<DocNode>('POST', `/api/docs/${id}/unpublish`),
+    /** Throws away pending edits; the published version is left untouched. */
+    discardDraft: (id: string) => request<DocNode>('POST', `/api/docs/${id}/discard-draft`),
     move: (id: string, parentId: string | null, order?: number) =>
       request<DocNode>('POST', `/api/docs/${id}/move`, { parentId, order }),
     reorder: (parentId: string | null, ids: string[]) =>

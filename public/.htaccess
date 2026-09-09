@@ -1,0 +1,33 @@
+# Apache / LiteSpeed SPA fallback for Hostinger shared hosting.
+#
+# The app uses BrowserRouter (unchanged), so a hard refresh or a shared deep
+# link such as /docs/introduction/about-linkeye must still serve the app shell.
+# This is a plain file inside the deployment ZIP — it needs no plan upgrade and
+# no server configuration access.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Never rewrite requests that map to a real file or directory
+  # (index.html, /assets/*, images, fonts, ...).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else is a client-side route: serve the app shell.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Safety net if mod_rewrite is unavailable: the bundled 404.html restores the
+# requested path client-side.
+ErrorDocument 404 /404.html
+
+# Hashed build assets are immutable; the HTML entry point must never be cached.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|woff2?|svg|png|jpg|jpeg|gif|webp|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

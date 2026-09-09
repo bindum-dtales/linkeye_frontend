@@ -107,13 +107,27 @@ export function Select({ className = '', ...rest }: SelectHTMLAttributes<HTMLSel
 
 /* ---------------------------------------------------------------- status */
 
-export function StatusPill({ status }: { status: 'DRAFT' | 'PUBLISHED' }) {
+/**
+ * Publication state of a node, in the three forms it can take:
+ *
+ *   Draft               — never published; invisible to readers.
+ *   Published           — live, and the editor matches what readers see.
+ *   Unpublished changes — live, but edits are saved and waiting behind it.
+ */
+export function StatusPill({
+  status,
+  hasDraft = false,
+}: {
+  status: 'DRAFT' | 'PUBLISHED'
+  hasDraft?: boolean
+}) {
   const published = status === 'PUBLISHED'
+  const pending = published && hasDraft
   return (
     <span
       className={[
         'inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-eyebrow font-medium uppercase tracking-[0.06em]',
-        published
+        published && !pending
           ? 'border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-ink)]'
           : 'border-[rgba(17,17,17,0.15)] bg-[var(--color-accent-wash)] text-[var(--color-body)]',
       ].join(' ')}
@@ -121,9 +135,9 @@ export function StatusPill({ status }: { status: 'DRAFT' | 'PUBLISHED' }) {
       {/* The dot is redundant with the label on purpose — the accent alone is never the signal. */}
       <span
         aria-hidden="true"
-        className={`size-1.5 rounded-full ${published ? 'bg-[var(--color-ink)]' : 'bg-[var(--color-accent)]'}`}
+        className={`size-1.5 rounded-full ${published && !pending ? 'bg-[var(--color-ink)]' : 'bg-[var(--color-accent)]'}`}
       />
-      {published ? 'Published' : 'Draft'}
+      {pending ? 'Unpublished changes' : published ? 'Published' : 'Draft'}
     </span>
   )
 }

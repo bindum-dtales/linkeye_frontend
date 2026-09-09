@@ -7,8 +7,8 @@
  */
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { siteConfig } from '@/config/siteConfig'
+import { API_BASE_URL } from '@/lib/apiBase'
 import { PageHeader } from '../AdminApp'
-import { API_URL } from '../api'
 import { useAuth } from '../auth'
 import { Button } from '../ui'
 
@@ -45,11 +45,11 @@ export function SettingsPage() {
 
           <section>
             <h2 className="eyebrow mb-2 text-[var(--color-muted)]">Connection</h2>
-            <Row label="API endpoint" value={API_URL} />
+            <Row label="API endpoint" value={API_BASE_URL} />
             <Row label="Public portal" value={`${window.location.origin}/docs`} />
             <p className="mt-2 text-micro text-[var(--color-muted)]">
-              Set <code className="font-[var(--font-mono)]">VITE_API_URL</code> to point this dashboard at a different
-              backend, then rebuild.
+              Set <code className="font-[var(--font-mono)]">VITE_API_URL</code> to point this dashboard at a
+              different backend, then rebuild — Vite inlines it at build time.
             </p>
           </section>
 
