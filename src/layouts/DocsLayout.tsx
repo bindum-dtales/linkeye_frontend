@@ -108,7 +108,9 @@ export function DocsLayout() {
 
             {/* -------------------------------------------- reading column */}
             <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
-              <div className="min-h-[calc(100vh-5.75rem)] border-x border-[var(--color-hairline)] bg-[var(--color-surface)] px-5 py-10 sm:px-10 lg:px-14 lg:py-14">
+              {/* Padding steps up only once the column is wide enough to give
+                  it away — below xl the sidebar already takes its share. */}
+              <div className="min-h-[calc(100vh-5.75rem)] border-x border-[var(--color-hairline)] bg-[var(--color-surface)] px-5 py-10 sm:px-8 lg:px-10 lg:py-14 xl:px-14">
                 <PageTransition routeKey={currentPath}>
                   <Outlet />
                 </PageTransition>
@@ -118,11 +120,16 @@ export function DocsLayout() {
             {/* ------------------------------------------------ right rail */}
             {/* Omitted entirely when there is too little to navigate, so the
                 reading column reclaims the width instead of sitting beside an
-                empty column. */}
+                empty column.
+
+                From 2xl rather than xl: a third column at 1280 left the reading
+                measure around 470px, well under the 700–800px this portal reads
+                at. Below 2xl the same list renders inside the article (see
+                DocsArticle), so nothing is lost — it just moves. */}
             {headings.length >= 2 && (
               <aside
                 aria-label="On this page"
-                className="sticky hidden shrink-0 self-start xl:block"
+                className="sticky hidden shrink-0 self-start 2xl:block"
                 style={{
                   top: CHROME_OFFSET,
                   width: 'var(--spacing-rail)',

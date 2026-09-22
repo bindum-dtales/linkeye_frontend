@@ -35,7 +35,19 @@
   /* ----------------------------------------------------------- accent */
   --color-accent: #f4c400;        /* indicators, underlines, markers */
   --color-accent-soft: #faedb8;   /* filter highlight ground */
-  --color-accent-wash: #fdf8e4;
+  --color-accent-wash: #fdf8e4;   /* prerequisite callout ground */
+
+  /* ------------------------------------------------ callout + table inks */
+  /* Two further hues, and only two: the warning and context callouts. Both
+     rules measure over 4.5:1 on their own wash, so the title text they also
+     colour stays readable. */
+  --color-danger: #c62828;        /* warning callout rule + title */
+  --color-danger-wash: #fdeef0;   /* warning callout ground */
+  --color-context: #0f6e68;       /* context callout rule + title */
+  --color-context-wash: #eaf5f4;  /* context callout ground */
+
+  --color-table-head: #1a1a2e;    /* table header fill — white text on it */
+  --color-table-stripe: #f8f9fa;  /* even-row shading */
 
   /* ----------------------------------------------------------- layout */
   --spacing-sidebar: 300px;       /* 350px from xl up — see index.css */

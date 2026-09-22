@@ -88,6 +88,21 @@ export function ArticleBody({ html }: { html: string }) {
       }
     })
 
+    // Same for a table too wide for the column: the container scrolls rather
+    // than the page, so without this the overflowed columns are unreachable
+    // without a pointer.
+    root.querySelectorAll<HTMLElement>('.doc-table-scroll').forEach((wrapper) => {
+      if (wrapper.scrollWidth > wrapper.clientWidth) {
+        wrapper.tabIndex = 0
+        wrapper.setAttribute('role', 'region')
+        wrapper.setAttribute('aria-label', 'Table, scrollable')
+      } else {
+        wrapper.removeAttribute('tabindex')
+        wrapper.removeAttribute('role')
+        wrapper.removeAttribute('aria-label')
+      }
+    })
+
     return () => {
       for (const cleanup of cleanups) cleanup()
     }

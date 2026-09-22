@@ -1,12 +1,19 @@
 /**
  * Documentation header.
  *
- * Both rows sit on one continuous yellow ground: the `<header>` element is the
+ * Both rows sit on one continuous black ground: the `<header>` element is the
  * only thing that paints a background, and neither row nor any child sets one,
  * so there is no seam or white strip between them.
  *
+ * Black rather than the yellow this used to be. A full-width yellow bar is the
+ * loudest thing on the page and competes with the article; it also drops the
+ * logo to roughly 1.6:1 against its own ground. On black the logo renders in
+ * full colour and the chrome recedes, which is what chrome is for. Yellow stays
+ * on as the accent it always was — the active tab, hover underlines, section
+ * ticks — never as a field.
+ *
  * The header re-scopes the neutral text/border tokens to values that hold up on
- * yellow. Nested components (Wordmark, Icon) read those same variables, so they
+ * black. Nested components (Wordmark, Icon) read those same variables, so they
  * adapt through the cascade rather than needing header-specific props.
  */
 import { Link, useLocation } from 'react-router-dom'
@@ -22,15 +29,18 @@ interface DocsHeaderProps {
 }
 
 /**
- * Token overrides scoped to the header. The page's greys measure 3.2–3.9:1 on
- * yellow and would fail AA, so they step down to charcoals that clear 4.5:1.
+ * Token overrides scoped to the header. The page's near-blacks are invisible on
+ * black, so the neutral ramp is inverted: white for the active/emphasis step,
+ * then two translucent whites that still clear 4.5:1 on #000 (0.78 ≈ 12.6:1,
+ * 0.66 ≈ 8.7:1). The base `:focus-visible` ring reads `--color-ink`, so it
+ * turns white inside the header without a second rule.
  */
-const ON_YELLOW: CSSProperties = {
-  '--color-ink': '#111111',
-  '--color-secondary': '#292929',
-  '--color-muted': '#555555',
-  '--color-border': 'rgba(17, 17, 17, 0.18)',
-  '--color-border-strong': 'rgba(17, 17, 17, 0.34)',
+const ON_BLACK: CSSProperties = {
+  '--color-ink': '#ffffff',
+  '--color-secondary': 'rgba(255, 255, 255, 0.78)',
+  '--color-muted': 'rgba(255, 255, 255, 0.66)',
+  '--color-border': 'rgba(255, 255, 255, 0.18)',
+  '--color-border-strong': 'rgba(255, 255, 255, 0.34)',
 } as CSSProperties
 
 export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
@@ -39,30 +49,30 @@ export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
 
   return (
     <header
-      style={ON_YELLOW}
+      style={ON_BLACK}
       /* Opaque and flat: stays exactly this colour while sticky — no blur,
          no transparency, no shadow. */
-      className="border-b border-[rgba(17,17,17,0.15)] bg-[var(--color-accent)]"
+      className="border-b border-[rgba(255,255,255,0.12)] bg-[#000000]"
     >
       {/* ---------------------------------------------------- identity row */}
       <div className="mx-auto flex h-[3.25rem] max-w-[1680px] items-center gap-4 px-4 sm:px-6 lg:px-8">
         <button
           type="button"
           onClick={onOpenNav}
-          className="-ml-1.5 flex size-8 shrink-0 items-center justify-center rounded-md text-[var(--color-ink)] transition-colors duration-[180ms] hover:bg-[rgba(17,17,17,0.08)] lg:hidden"
+          className="-ml-1.5 flex size-8 shrink-0 items-center justify-center rounded-md text-[var(--color-ink)] transition-colors duration-[180ms] hover:bg-[rgba(255,255,255,0.12)] lg:hidden"
           aria-label="Open documentation navigation"
         >
           <Icon name="menu" size={18} />
         </button>
 
-        <Wordmark />
+        <Wordmark onDark />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <SearchTrigger onClick={onOpenSearch} />
 
           <span
             aria-hidden="true"
-            className="hidden h-4 w-px bg-[rgba(17,17,17,0.2)] md:block"
+            className="hidden h-4 w-px bg-[rgba(255,255,255,0.2)] md:block"
           />
 
           <nav aria-label="Utility" className="hidden items-center md:flex">
@@ -99,12 +109,14 @@ export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
                   ].join(' ')}
                 >
                   {link.label}
-                  {/* Black underline, inset from the label, growing from the
-                      left. Weight also shifts, so the bar is reinforcement. */}
+                  {/* Gold underline, inset from the label, growing from the
+                      left. Weight and colour also shift, so the bar is
+                      reinforcement rather than the only signal — which is the
+                      only way an accent at this contrast may be used. */}
                   <span
                     aria-hidden="true"
                     className={[
-                      'absolute inset-x-3 bottom-[3px] h-[2px] origin-left bg-[#111111] transition-transform duration-[200ms] ease-[var(--ease-out-soft)] first:inset-x-0 motion-reduce:transition-none',
+                      'absolute inset-x-3 bottom-[3px] h-[2px] origin-left bg-[var(--color-accent)] transition-transform duration-[200ms] ease-[var(--ease-out-soft)] first:inset-x-0 motion-reduce:transition-none',
                       active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100',
                     ].join(' ')}
                   />
@@ -118,19 +130,19 @@ export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
   )
 }
 
-/** White field for contrast against the yellow ground; black hairline on focus. */
+/** Lifted field on the black ground; white hairline and ring on focus. */
 function SearchTrigger({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-8 shrink-0 items-center gap-2 rounded-md border border-[rgba(17,17,17,0.22)] bg-[var(--color-surface)] pl-2.5 pr-2 text-left transition-colors duration-[180ms] hover:border-[rgba(17,17,17,0.45)] focus-visible:border-[#111111] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] sm:w-[15.5rem]"
+      className="group flex h-8 shrink-0 items-center gap-2 rounded-md border border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.07)] pl-2.5 pr-2 text-left transition-colors duration-[180ms] hover:border-[rgba(255,255,255,0.45)] hover:bg-[rgba(255,255,255,0.12)] focus-visible:border-[#ffffff] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ffffff] sm:w-[15.5rem]"
     >
-      <Icon name="search" size={14} className="shrink-0 text-[#292929]" />
-      <span className="hidden flex-1 truncate whitespace-nowrap text-[var(--text-micro)] text-[#555555] sm:block">
+      <Icon name="search" size={14} className="shrink-0 text-[rgba(255,255,255,0.78)]" />
+      <span className="hidden flex-1 truncate whitespace-nowrap text-[var(--text-micro)] text-[rgba(255,255,255,0.66)] sm:block">
         Search documentation
       </span>
-      <kbd className="hidden shrink-0 items-center gap-0.5 rounded border border-[rgba(17,17,17,0.18)] bg-[var(--color-page)] px-1 py-px font-sans text-[0.625rem] font-medium text-[#555555] sm:flex">
+      <kbd className="hidden shrink-0 items-center gap-0.5 rounded border border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.08)] px-1 py-px font-sans text-[0.625rem] font-medium text-[rgba(255,255,255,0.66)] sm:flex">
         <span className="text-[0.6875rem] leading-none">⌘</span>K
       </kbd>
     </button>
@@ -144,7 +156,7 @@ function UtilityLink({ label, href }: { label: string; href: string }) {
   const underline = (
     <span
       aria-hidden="true"
-      className="absolute inset-x-2.5 bottom-1 h-px origin-left scale-x-0 bg-[#111111] transition-transform duration-[180ms] ease-[var(--ease-out-soft)] group-hover:scale-x-100 motion-reduce:transition-none"
+      className="absolute inset-x-2.5 bottom-1 h-px origin-left scale-x-0 bg-[var(--color-accent)] transition-transform duration-[180ms] ease-[var(--ease-out-soft)] group-hover:scale-x-100 motion-reduce:transition-none"
     />
   )
 

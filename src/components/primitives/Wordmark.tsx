@@ -1,19 +1,22 @@
 import { Link } from 'react-router-dom'
 import { siteConfig } from '@/config/siteConfig'
-import logoUrl from '@/assets/LinkEye Logo For Light BG.svg'
+import lightBgLogoUrl from '@/assets/LinkEye Logo For Light BG.svg'
+import darkBgLogoUrl from '@/assets/LinkEye Logo For Dark BG.svg'
 
 /**
  * Brand lockup — the LinkEye logo followed by the quiet documentation suffix.
  *
- * The light-background variant is the right one for both grounds it sits on:
- * the drawer's off-white page colour, and the yellow header, whose text token
- * is the same #292929 the logo's wordmark is drawn in. The dark-background
- * variant is white-on-transparent and would fail contrast on either.
+ * Two grounds, two assets. The light-background variant draws its wordmark in
+ * #292929, which is right on the drawer's off-white but would all but vanish on
+ * the black header; the dark-background variant draws it in white and leaves
+ * the mark in full colour, which is exactly the contrast the old yellow header
+ * could not give it. `onDark` picks between them rather than filtering one
+ * asset, so neither is degraded.
  *
  * Sized by height so the header's 3.25rem identity row keeps its rhythm; the
  * width follows the asset's 16:3 ratio.
  */
-export function Wordmark({ compact = false }: { compact?: boolean }) {
+export function Wordmark({ compact = false, onDark = false }: { compact?: boolean; onDark?: boolean }) {
   return (
     <Link
       to="/docs"
@@ -22,7 +25,7 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
     >
       {/* Decorative: the link above carries the accessible name. */}
       <img
-        src={logoUrl}
+        src={onDark ? darkBgLogoUrl : lightBgLogoUrl}
         alt=""
         width={117}
         height={22}

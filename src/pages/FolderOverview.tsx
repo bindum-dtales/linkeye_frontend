@@ -24,7 +24,8 @@ export function FolderOverview({ folder }: { folder: DocFolder }) {
           <span className="eyebrow text-[var(--color-muted)]">Section</span>
         </div>
 
-        <h1 className="text-[2.25rem] font-semibold leading-[1.08] tracking-[-0.033em] text-[var(--color-ink)] sm:text-[2.75rem]">
+        {/* Same H1 as an article's — one page-title style across the portal. */}
+        <h1 className="text-[2.25rem] font-semibold leading-[1.08] tracking-[-0.033em] text-[var(--color-ink)] sm:text-[2.75rem] lg:text-[var(--text-display)]">
           {folder.title}
         </h1>
 

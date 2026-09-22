@@ -45,46 +45,69 @@ export const siteConfig: SiteConfig = {
     'Product documentation for NOC engineers, network managers and CIO stakeholders.',
   copyrightHolder: 'LinkEye',
   headerLinks: [
-    { label: 'Support', href: '/docs/appendices/b-support' },
-    { label: 'Glossary', href: '/docs/appendices/a-glossary' },
-    { label: 'Onboarding', href: '/docs/part-iii-settings/onboarding' },
+    { label: 'Support', href: '/docs/reference/support-contact' },
+    { label: 'Glossary', href: '/docs/reference/glossary' },
+    { label: 'Onboarding', href: '/docs/administration-configuration/onboarding' },
   ],
+  /*
+   * The documentation home plus the four reader-facing sections. The labels are
+   * deliberately descriptive rather than a mirror of the product's own menu:
+   * a tab called "Home" collided with the documentation homepage concept and
+   * told the reader nothing about what the section contains.
+   *
+   * These must stay in step with the section labels in the sidebar, which come
+   * from the CMS by way of `src/content/nav.config.ts`.
+   */
   contextLinks: [
     { label: 'Documentation Home', href: '/docs' },
-    { label: 'Introduction', href: '/docs/introduction' },
-    { label: 'Home', href: '/docs/part-i-home' },
-    { label: 'Infrastructure', href: '/docs/part-ii-infrastructure' },
-    { label: 'Settings', href: '/docs/part-iii-settings' },
+    { label: 'Getting Started', href: '/docs/getting-started' },
+    { label: 'Observability & Insights', href: '/docs/monitoring-insights' },
+    { label: 'Infrastructure & Inventory', href: '/docs/infrastructure-inventory' },
+    { label: 'Administration & Configuration', href: '/docs/administration-configuration' },
   ],
+  /* Same vocabulary as the sidebar and the tabs above — three navigation
+     surfaces, one set of category names. */
   footerLinkGroups: [
     {
       title: 'Getting Started',
       links: [
-        { label: 'About LinkEye', href: '/docs/introduction/about-linkeye' },
-        { label: 'Signing In', href: '/docs/introduction/signing-in' },
+        { label: 'About LinkEye', href: '/docs/getting-started/about-linkeye' },
+        { label: 'Signing In', href: '/docs/getting-started/signing-in' },
         {
-          label: 'Conventions Used in This Guide',
-          href: '/docs/introduction/conventions-used-in-this-guide',
+          label: 'Documentation Conventions',
+          href: '/docs/getting-started/documentation-conventions',
         },
-        { label: 'Overview', href: '/docs/part-i-home/overview' },
+        { label: 'Glossary', href: '/docs/reference/glossary' },
       ],
     },
     {
-      title: 'Operations',
+      title: 'Observability & Insights',
       links: [
-        { label: 'Agentic NetOps', href: '/docs/part-i-home/agentic-netops' },
-        { label: 'Digital Experience', href: '/docs/part-i-home/digital-experience' },
-        { label: 'Assets Health', href: '/docs/part-ii-infrastructure/assets-health' },
-        { label: 'Topology', href: '/docs/part-ii-infrastructure/topology' },
+        { label: 'Overview', href: '/docs/monitoring-insights/overview' },
+        { label: 'Agentic NetOps', href: '/docs/monitoring-insights/agentic-netops' },
+        { label: 'Digital Experience', href: '/docs/monitoring-insights/digital-experience' },
+        { label: 'CIO Insights', href: '/docs/monitoring-insights/cio-insights' },
       ],
     },
     {
-      title: 'Administration',
+      title: 'Infrastructure & Inventory',
       links: [
-        { label: 'Users', href: '/docs/part-iii-settings/users' },
-        { label: 'Sites', href: '/docs/part-iii-settings/sites' },
-        { label: 'Alert Configuration', href: '/docs/part-iii-settings/alert-configuration' },
-        { label: 'Onboarding', href: '/docs/part-iii-settings/onboarding' },
+        { label: 'Assets Health', href: '/docs/infrastructure-inventory/assets-health' },
+        { label: 'Topology', href: '/docs/infrastructure-inventory/topology' },
+        { label: 'Inventory', href: '/docs/infrastructure-inventory/inventory' },
+        { label: 'Logs', href: '/docs/infrastructure-inventory/logs' },
+      ],
+    },
+    {
+      title: 'Administration & Configuration',
+      links: [
+        { label: 'User Management', href: '/docs/administration-configuration/user-management' },
+        { label: 'Site Management', href: '/docs/administration-configuration/site-management' },
+        {
+          label: 'Alert Configuration',
+          href: '/docs/administration-configuration/alert-configuration',
+        },
+        { label: 'Onboarding', href: '/docs/administration-configuration/onboarding' },
       ],
     },
   ],

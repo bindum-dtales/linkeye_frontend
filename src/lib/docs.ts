@@ -8,11 +8,19 @@
  * Everything below stays synchronous, exactly as when the index was a
  * build-time virtual module, so the component layer is unchanged. Article
  * bodies still arrive lazily, now from the API instead of a code-split chunk.
+ *
+ * This is also the one place where the published tree becomes the *presented*
+ * tree: titles are normalised for display and hidden branches are dropped as
+ * the payload is adapted (see `displayTitle` and `nav.config.ts`). Doing it
+ * here rather than in the components means every surface — sidebar,
+ * breadcrumbs, search, prev/next, `<title>` — sees the same titles, and none of
+ * them needs to know the rule.
  */
 import type { Crumb, DocFolder, DocHeading, DocIndex, DocNode, DocPage, NavRef, SearchEntry } from './docs.types'
 import { API_BASE_URL } from './apiBase'
 import { isFolder } from './docs.types'
 import { normalizePath } from './routing'
+import { folderLabels, hiddenFolderSlugs, hiddenFolderTitles } from '@/content/nav.config'
 
 /** One node of the backend's `/api/docs/index` payload. */
 interface ApiNode {
@@ -59,6 +67,86 @@ export const docsVersion = (): number => version
 
 const asString = (value: unknown): string | undefined => (typeof value === 'string' && value ? value : undefined)
 
+/* ------------------------------------------------- display normalisation */
+
+/**
+ * Print-document numbering, as carried by legacy page titles: `2. `, `3.1.1 `,
+ * `7.1 — `. Anchored, and it requires whitespace after the number, so a title
+ * that legitimately opens with a figure (`802.1X Profiles`, `5G Links`) is left
+ * alone.
+ */
+const NUMERIC_PREFIX = /^\s*\d+(?:\.\d+)*[.)]?(?:\s*[-–—:])?\s+/
+
+/** Printed-book section labels: `Part I — Home`, `Part III: Settings`. */
+const PART_PREFIX = /^\s*part\s+[ivxlcdm]+\s*[-–—:.]?\s+/i
+
+/**
+ * The title a reader sees, derived from the title the CMS stores.
+ *
+ * A documentation portal is not a paginated book: the hierarchy is carried by
+ * the sidebar nesting, so the numbering and `Part N` labels that came across
+ * from the printed guide are stripped here rather than hidden in CSS — every
+ * surface (sidebar, breadcrumbs, search, prev/next, `<title>`) reads the title
+ * through this function, so none of them can disagree.
+ *
+ * Stripping never returns an empty string: if a title is *only* a number, the
+ * original stands, because a blank navigation row is worse than a numbered one.
+ */
+export function displayTitle(title: string): string {
+  let out = title.trim().replace(/\s+/g, ' ')
+  for (const pattern of [PART_PREFIX, NUMERIC_PREFIX]) {
+    const stripped = out.replace(pattern, '').trim()
+    if (stripped) out = stripped
+  }
+  return out
+}
+
+/** Applies the `nav.config.ts` label override for a folder, then normalises. */
+const folderTitle = (slug: string, title: string): string =>
+  displayTitle(folderLabels[slug] ?? title)
+
+/** `/docs/monitoring-insights/overview` -> `monitoring-insights`. */
+const parentSlug = (path: string): string =>
+  path.split('/').filter(Boolean).slice(0, -1).at(-1) ?? ''
+
+/**
+ * The owning section's label for a reference that names it by title.
+ *
+ * Prev/next links and search results carry the section as a *title*, not a
+ * slug, so an override keyed by slug cannot be looked up directly. The route
+ * supplies the missing key: the second-to-last segment of a page's path is the
+ * slug of the folder that holds it. Without this, prev/next and search would be
+ * the two surfaces still showing a renamed section under its old name.
+ */
+const sectionLabel = (path: string, title: string): string =>
+  folderTitle(parentSlug(path), title)
+
+/** True for a node that must not appear in the public portal. */
+function isHidden(node: ApiNode): boolean {
+  if (node.kind !== 'folder') return false
+  const slug = node.slug.toLowerCase()
+  const title = displayTitle(node.title).toLowerCase()
+  return hiddenFolderSlugs.includes(slug) || hiddenFolderTitles.includes(title)
+}
+
+/**
+ * Breadcrumb labels are rendered by the CMS against the stored titles, so they
+ * carry the same numbering and the same pre-rename section names. Re-deriving
+ * them here keeps the trail identical to the sidebar it mirrors.
+ */
+function adaptCrumbs(crumbs: Crumb[]): Crumb[] {
+  return crumbs.map((crumb) => {
+    const slug = crumb.href ? crumb.href.split('/').filter(Boolean).at(-1) ?? '' : ''
+    return { ...crumb, label: slug ? folderTitle(slug, crumb.label) : displayTitle(crumb.label) }
+  })
+}
+
+const adaptRef = (ref: NavRef): NavRef => ({
+  ...ref,
+  title: displayTitle(ref.title),
+  folderTitle: sectionLabel(ref.path, ref.folderTitle),
+})
+
 /**
  * Maps the API's node shape onto the portal's `DocNode`.
  *
@@ -75,14 +163,16 @@ function adapt(tree: ApiNode[], searchEntries: SearchEntry[]): DocIndex {
       const folder: DocFolder = {
         kind: 'folder',
         id: node.id,
-        title: node.title,
+        title: folderTitle(node.slug, node.title),
         path: node.path,
         ...(node.description ? { description: node.description } : {}),
-        breadcrumb: node.breadcrumb ?? [],
+        breadcrumb: adaptCrumbs(node.breadcrumb ?? []),
         order: node.order,
         hasIndex: node.hasIndex ?? false,
         headings: node.headings ?? [],
-        children: (node.children ?? []).map(convert),
+        // Hidden branches are dropped here, so nothing downstream — sidebar,
+        // folder listings, page counts — has to know they ever existed.
+        children: (node.children ?? []).filter((child) => !isHidden(child)).map(convert),
       }
       foldersByPath[folder.path] = folder
       return folder
@@ -94,9 +184,9 @@ function adapt(tree: ApiNode[], searchEntries: SearchEntry[]): DocIndex {
       kind: 'page',
       slug: node.slug,
       path: node.path,
-      title: node.title,
+      title: displayTitle(node.title),
       ...(node.description ? { description: node.description } : {}),
-      breadcrumb: node.breadcrumb ?? [],
+      breadcrumb: adaptCrumbs(node.breadcrumb ?? []),
       // Bodies are fetched per page by `loadContent`, never carried in the index.
       html: '',
       headings: node.headings ?? [],
@@ -104,8 +194,8 @@ function adapt(tree: ApiNode[], searchEntries: SearchEntry[]): DocIndex {
       lastUpdated: asString(meta.lastUpdated) ?? node.updatedAt.slice(0, 10),
       ...(version ? { version } : {}),
       keywords: Array.isArray(meta.keywords) ? meta.keywords.map(String) : [],
-      ...(node.prev ? { prev: node.prev } : {}),
-      ...(node.next ? { next: node.next } : {}),
+      ...(node.prev ? { prev: adaptRef(node.prev) } : {}),
+      ...(node.next ? { next: adaptRef(node.next) } : {}),
     }
     byPath[page.path] = page
     flat.push({ title: page.title, path: page.path, folderTitle: page.breadcrumb.at(-2)?.label ?? '' })
@@ -113,8 +203,20 @@ function adapt(tree: ApiNode[], searchEntries: SearchEntry[]): DocIndex {
   }
 
   // A page at the root resolves by URL but has no place in a folder sidebar.
-  const folders = tree.map(convert).filter(isFolder)
-  return { tree: folders, byPath, foldersByPath, flat, searchEntries }
+  const folders = tree.filter((node) => !isHidden(node)).map(convert).filter(isFolder)
+
+  // The search corpus is built by the CMS from the stored titles, so it is
+  // re-derived against the same rules — and entries under a hidden branch are
+  // dropped, or search would be a back door into content the sidebar hides.
+  const entries = searchEntries
+    .filter((entry) => byPath[normalizePath(entry.path)] !== undefined)
+    .map((entry) => ({
+      ...entry,
+      title: displayTitle(entry.title),
+      folderTitle: sectionLabel(entry.path, entry.folderTitle),
+    }))
+
+  return { tree: folders, byPath, foldersByPath, flat, searchEntries: entries }
 }
 
 interface Envelope<T> {

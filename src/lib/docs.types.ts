@@ -27,7 +27,7 @@ export interface Crumb {
 export interface NavRef {
   title: string
   path: string
-  /** Display label of the owning section, e.g. `Part I — Home`. */
+  /** Display label of the owning section, e.g. `Observability & Insights`. */
   folderTitle: string
 }
 
@@ -54,9 +54,9 @@ export interface DocPage {
 
 export interface DocFolder {
   kind: 'folder'
-  /** Stable directory id, e.g. `part-i-home`. Never changes; owns the URL. */
+  /** Stable section id, e.g. `infrastructure-inventory`. Owns the URL. */
   id: string
-  /** Display label from `nav.config.ts` or the section's `README.md` heading. */
+  /** Display label: the CMS title, overridden by `nav.config.ts`. */
   title: string
   path: string
   description?: string
@@ -76,7 +76,7 @@ export interface DocFolder {
 export type DocNode = DocFolder | DocPage
 
 export interface DocIndex {
-  /** Top-level folders, ordered per `nav.config.ts`. */
+  /** Top-level folders, in published order. */
   tree: DocFolder[]
   /** Every page keyed by canonical path, for O(1) route resolution. */
   byPath: Record<string, DocPage>

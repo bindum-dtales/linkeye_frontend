@@ -64,7 +64,7 @@ export function DocsArticle({ page }: { page: DocPage }) {
       </header>
 
       {/* On This Page moves into the reading column below the rail breakpoint. */}
-      <div className="mt-6 xl:hidden">
+      <div className="mt-6 2xl:hidden">
         <OnThisPage headings={page.headings} collapsible />
       </div>
 
