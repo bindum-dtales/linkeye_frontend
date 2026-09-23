@@ -28,6 +28,23 @@ interface DocsHeaderProps {
   onOpenSearch: () => void
 }
 
+/*
+ * A note on the missing `text-[var(--text-micro)]` in this file.
+ *
+ * Tailwind v4 reads a bare `var()` in `text-[...]` as a *colour*, so that class
+ * compiled to `color: var(--text-micro)` — i.e. `color: 0.75rem`. That is
+ * invalid at computed-value time, which makes `color` fall back to `inherit`,
+ * and `body` sets `color: var(--color-secondary)` (#5F5F5F at :root). Every nav
+ * label therefore computed to #5F5F5F on black no matter what colour class it
+ * carried, because the two classes have equal specificity and this one is
+ * emitted later. Only `:hover` escaped, having one more specificity point.
+ *
+ * The class is removed rather than type-hinted: it was contributing no
+ * font-size at all, so the labels have always rendered at the inherited 14px,
+ * and `text-[length:var(--text-micro)]` would shrink them to 12px — a
+ * typography change, which is out of scope here.
+ */
+
 /**
  * Token overrides scoped to the header. The page's near-blacks are invisible on
  * black, so the neutral ramp is inverted: white for the active/emphasis step,
@@ -90,7 +107,7 @@ export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
       {/* ----------------------------------------------------- context row */}
       <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-8">
         <div className="no-scrollbar flex items-stretch gap-6 overflow-x-auto">
-          <span className="hidden shrink-0 items-center py-2.5 pr-2 text-[var(--text-micro)] font-medium tracking-[-0.005em] text-[var(--color-secondary)] lg:flex">
+          <span className="hidden shrink-0 items-center py-2.5 pr-2 font-medium tracking-[-0.005em] text-[var(--color-secondary)] lg:flex">
             {siteConfig.documentationTitle}
           </span>
 
@@ -106,7 +123,7 @@ export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
                   data-title={link.label}
                   aria-current={active ? 'true' : undefined}
                   className={[
-                    'no-reflow-bold group relative shrink-0 whitespace-nowrap px-3 py-2.5 text-[var(--text-micro)] transition-colors duration-[180ms] first:pl-0 lg:first:pl-3',
+                    'no-reflow-bold group relative shrink-0 whitespace-nowrap px-3 py-2.5 transition-colors duration-[180ms] first:pl-0 lg:first:pl-3',
                     active
                       ? 'font-semibold text-[var(--color-ink)]'
                       : 'font-medium text-[var(--color-nav)] hover:text-[var(--color-nav-hover)]',
@@ -155,7 +172,7 @@ function SearchTrigger({ onClick }: { onClick: () => void }) {
 
 function UtilityLink({ label, href }: { label: string; href: string }) {
   const className =
-    'group relative rounded px-2.5 py-1.5 text-[var(--text-micro)] font-medium text-[var(--color-nav)] transition-colors duration-[180ms] hover:text-[var(--color-nav-hover)]'
+    'group relative rounded px-2.5 py-1.5 font-medium text-[var(--color-nav)] transition-colors duration-[180ms] hover:text-[var(--color-nav-hover)]'
 
   const underline = (
     <span
