@@ -41,6 +41,10 @@ const ON_BLACK: CSSProperties = {
   '--color-muted': 'rgba(255, 255, 255, 0.66)',
   '--color-border': 'rgba(255, 255, 255, 0.18)',
   '--color-border-strong': 'rgba(255, 255, 255, 0.34)',
+  /* Top-nav links: white at rest, gold on hover. Scoped here so both the
+     context row and the utility row read one pair of values. */
+  '--color-nav': '#ffffff',
+  '--color-nav-hover': '#ffd230',
 } as CSSProperties
 
 export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
@@ -105,7 +109,7 @@ export function DocsHeader({ onOpenNav, onOpenSearch }: DocsHeaderProps) {
                     'no-reflow-bold group relative shrink-0 whitespace-nowrap px-3 py-2.5 text-[var(--text-micro)] transition-colors duration-[180ms] first:pl-0 lg:first:pl-3',
                     active
                       ? 'font-semibold text-[var(--color-ink)]'
-                      : 'font-medium text-[var(--color-secondary)] hover:text-[var(--color-ink)]',
+                      : 'font-medium text-[var(--color-nav)] hover:text-[var(--color-nav-hover)]',
                   ].join(' ')}
                 >
                   {link.label}
@@ -151,7 +155,7 @@ function SearchTrigger({ onClick }: { onClick: () => void }) {
 
 function UtilityLink({ label, href }: { label: string; href: string }) {
   const className =
-    'group relative rounded px-2.5 py-1.5 text-[var(--text-micro)] font-medium text-[var(--color-secondary)] transition-colors duration-[180ms] hover:text-[var(--color-ink)]'
+    'group relative rounded px-2.5 py-1.5 text-[var(--text-micro)] font-medium text-[var(--color-nav)] transition-colors duration-[180ms] hover:text-[var(--color-nav-hover)]'
 
   const underline = (
     <span
