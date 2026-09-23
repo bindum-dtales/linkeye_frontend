@@ -155,7 +155,7 @@ export interface DocNode {
   /** True when edits are saved but not yet published. */
   hasDraft?: boolean
   /** The unpublished edits themselves; absent when nothing is pending. */
-  draft?: { title: string; description: string; content: string; html: string }
+  draft?: { title: string; description: string; content: string; html: string; metadata?: unknown }
   hasIndex?: boolean
   content?: string
   html?: string
@@ -217,6 +217,12 @@ export interface NodeDraft {
   slug?: string
   description?: string | null
   content?: string | null
+  /**
+   * Free-form bag on the node. Drafted like the editorial fields since
+   * `supabase-migration-02-draft-metadata.sql`, so a change to it reaches
+   * readers on Publish rather than on Save.
+   */
+  metadata?: Record<string, unknown> | null
   status?: Status
 }
 
@@ -235,7 +241,7 @@ export const api = {
     byId: (id: string) => request<DocNode>('GET', `/api/docs/id/${id}`),
     revisions: (id: string) => request<Revision[]>('GET', `/api/docs/id/${id}/revisions`),
     create: (draft: NodeDraft) => request<DocNode>('POST', '/api/docs', draft),
-    update: (id: string, patch: Partial<Omit<NodeDraft, 'type' | 'parentId'>>) =>
+    update: (id: string, patch: Partial<Omit<NodeDraft, 'type' | 'parentId' | 'status'>>) =>
       request<DocNode>('PUT', `/api/docs/${id}`, patch),
     remove: (id: string) => request<{ deleted: boolean }>('DELETE', `/api/docs/${id}`),
     /** Promotes any pending draft onto the live version and makes it public. */

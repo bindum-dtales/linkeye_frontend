@@ -18,9 +18,17 @@
  * Preview deliberately saves first and renders the `html` the backend returns —
  * the markdown pipeline is never reimplemented here, so what the editor
  * previews is exactly what the portal will publish.
+ *
+ * One node is edited slightly differently: the Documentation Home document,
+ * which is a masthead rather than an article. It swaps the URL-slug field for
+ * the two labels the portal renders around the section list, and relabels
+ * title and description to what the reader actually sees. Everything else —
+ * the buffer, the dirty check, save, publish, discard, preview, history — is
+ * the same code path as every other page, because it is the same workflow.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '@/components/primitives/Icon'
+import { HOME_META, HOME_SLUG, homeDefaults } from '@/lib/homeDoc'
 import { api, ApiError, formatDate, type DocNode, type MediaItem, type Revision } from '../api'
 import { Banner, Button, Field, Input, Modal, StatusPill, Textarea } from '../ui'
 import { MarkdownEditor } from './MarkdownEditor'
@@ -38,6 +46,20 @@ interface Draft {
   slug: string
   description: string
   content: string
+  /** Home document only; stored in `metadata`, drafted like everything else. */
+  eyebrow: string
+  sectionsHeading: string
+}
+
+/** True for the reserved root page whose content the portal renders at `/docs`. */
+const isHomeDoc = (node: DocNode): boolean =>
+  node.kind === 'page' && node.parentId === null && node.slug === HOME_SLUG
+
+/** A string out of the node's untyped metadata bag. */
+const metaString = (metadata: unknown, key: string): string => {
+  if (!metadata || typeof metadata !== 'object') return ''
+  const value = (metadata as Record<string, unknown>)[key]
+  return typeof value === 'string' ? value : ''
 }
 
 /**
@@ -45,12 +67,19 @@ interface Draft {
  * published text. `slug` is never drafted — it rewrites `path` across the
  * subtree, so the backend applies it immediately in both cases.
  */
-const draftOf = (node: DocNode): Draft => ({
-  title: node.draft?.title ?? node.title,
-  slug: node.slug,
-  description: node.draft?.description ?? node.description ?? '',
-  content: node.draft?.content ?? node.content ?? '',
-})
+const draftOf = (node: DocNode): Draft => {
+  // Pending metadata when there is some, the published bag otherwise — the
+  // same precedence the text fields above use.
+  const metadata = node.draft?.metadata ?? node.metadata
+  return {
+    title: node.draft?.title ?? node.title,
+    slug: node.slug,
+    description: node.draft?.description ?? node.description ?? '',
+    content: node.draft?.content ?? node.content ?? '',
+    eyebrow: metaString(metadata, HOME_META.eyebrow),
+    sectionsHeading: metaString(metadata, HOME_META.sectionsHeading),
+  }
+}
 
 export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
   const [node, setNode] = useState<DocNode | null>(null)
@@ -92,7 +121,9 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
     (draft.title !== saved.title ||
       draft.slug !== saved.slug ||
       draft.description !== saved.description ||
-      draft.content !== saved.content)
+      draft.content !== saved.content ||
+      draft.eyebrow !== saved.eyebrow ||
+      draft.sectionsHeading !== saved.sectionsHeading)
 
   /** Edits are waiting behind the published version, or are about to be. */
   const pending = Boolean(node?.hasDraft) || dirty
@@ -110,6 +141,18 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
         description: draft.description || null,
         content: draft.content || null,
         ...(draft.slug !== node.slug ? { slug: draft.slug } : {}),
+        // Merged onto whatever the node already carries: `metadata` is a shared
+        // bag (the importer writes lastUpdated, version and keywords into it),
+        // so writing only these two keys would drop the rest.
+        ...(isHomeDoc(node)
+          ? {
+              metadata: {
+                ...((node.draft?.metadata ?? node.metadata ?? {}) as Record<string, unknown>),
+                [HOME_META.eyebrow]: draft.eyebrow,
+                [HOME_META.sectionsHeading]: draft.sectionsHeading,
+              },
+            }
+          : {}),
       }
       const saved = await api.docs.update(node.id, patch)
       setNode(saved)
@@ -201,6 +244,8 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
   }
 
   const isFolder = node.kind === 'folder'
+  const isHome = isHomeDoc(node)
+  const defaults = homeDefaults()
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -227,7 +272,11 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
           >
             v{node.version}
           </Button>
-          <Button variant="danger" iconOnly icon="trash" title="Delete" aria-label="Delete" onClick={() => void remove()} />
+          {/* Deleting the home document would silently drop `/docs` back to the
+              built-in text, which is a confusing way to spell "revert". */}
+          {!isHome && (
+            <Button variant="danger" iconOnly icon="trash" title="Delete" aria-label="Delete" onClick={() => void remove()} />
+          )}
           {/* Only offered once there is something saved to throw away. */}
           {node.hasDraft && !dirty && (
             <Button variant="ghost" onClick={() => void discard()} disabled={busy}>
@@ -284,40 +333,92 @@ export function DocEditor({ nodeId, onSaved, onDeleted }: DocEditorProps) {
 
       {/* -- metadata ---------------------------------------------------- */}
       <div className="grid shrink-0 gap-3 border-b border-[var(--color-hairline)] px-5 py-4 md:grid-cols-[2fr_1fr]">
-        <Field label="Title" htmlFor="node-title">
+        <Field
+          label={isHome ? 'Display heading' : 'Title'}
+          htmlFor="node-title"
+          {...(isHome ? { hint: `The large heading on /docs. Blank falls back to “${defaults.title}”.` } : {})}
+        >
           <Input
             id="node-title"
             value={draft.title}
+            placeholder={isHome ? defaults.title : undefined}
             onChange={(event) => setDraft({ ...draft, title: event.target.value })}
           />
         </Field>
-        <Field
-          label="URL slug"
-          htmlFor="node-slug"
-          hint="Changing this rewrites the URL of everything inside it."
-        >
-          <Input
-            id="node-slug"
-            value={draft.slug}
-            onChange={(event) => setDraft({ ...draft, slug: event.target.value })}
-          />
-        </Field>
-        <div className="md:col-span-2">
-          <Field label="Description" htmlFor="node-description" hint="Shown under the title and in search results.">
+
+        {/* The home document's URL is reserved — the portal renders it at
+            /docs and finds it by that slug — so the slug field is replaced by
+            the label that sits above the heading. */}
+        {isHome ? (
+          <Field label="Eyebrow label" htmlFor="home-eyebrow" hint="Small caps line above the heading.">
+            <Input
+              id="home-eyebrow"
+              value={draft.eyebrow}
+              placeholder={defaults.eyebrow}
+              onChange={(event) => setDraft({ ...draft, eyebrow: event.target.value })}
+            />
+          </Field>
+        ) : (
+          <Field
+            label="URL slug"
+            htmlFor="node-slug"
+            hint="Changing this rewrites the URL of everything inside it."
+          >
+            <Input
+              id="node-slug"
+              value={draft.slug}
+              onChange={(event) => setDraft({ ...draft, slug: event.target.value })}
+            />
+          </Field>
+        )}
+
+        <div className={isHome ? undefined : 'md:col-span-2'}>
+          <Field
+            label={isHome ? 'Intro paragraph' : 'Description'}
+            htmlFor="node-description"
+            hint={
+              isHome
+                ? 'The paragraph under the heading.'
+                : 'Shown under the title and in search results.'
+            }
+          >
             <Textarea
               id="node-description"
               rows={2}
               value={draft.description}
+              placeholder={isHome ? defaults.intro : undefined}
               onChange={(event) => setDraft({ ...draft, description: event.target.value })}
             />
           </Field>
         </div>
+
+        {isHome && (
+          <Field
+            label="Section list heading"
+            htmlFor="home-sections-heading"
+            hint="Sits above the list of documentation sections."
+          >
+            <Input
+              id="home-sections-heading"
+              value={draft.sectionsHeading}
+              placeholder={defaults.sectionsHeading}
+              onChange={(event) => setDraft({ ...draft, sectionsHeading: event.target.value })}
+            />
+          </Field>
+        )}
       </div>
 
       {/* -- body -------------------------------------------------------- */}
       {isFolder && (
         <p className="shrink-0 border-b border-[var(--color-hairline)] bg-[var(--color-accent-wash)] px-5 py-2 text-micro text-[var(--color-body)]">
           This is a folder. Anything written below appears as its section introduction, above the list of pages it contains.
+        </p>
+      )}
+      {isHome && (
+        <p className="shrink-0 border-b border-[var(--color-hairline)] bg-[var(--color-accent-wash)] px-5 py-2 text-micro text-[var(--color-body)]">
+          This is the <strong className="font-semibold">/docs</strong> landing page. The list of sections below the
+          intro is built from the top-level folders automatically — add, rename, reorder or delete a folder and the
+          page follows. Anything written here appears between the intro and that list.
         </p>
       )}
       <MarkdownEditor

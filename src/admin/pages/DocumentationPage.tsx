@@ -8,11 +8,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Icon } from '@/components/primitives/Icon'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { HOME_META, HOME_SLUG, homeDefaults } from '@/lib/homeDoc'
 import { PageHeader } from '../AdminApp'
 import { api, ApiError, findNode, walkTree, type DocNode, type NodeType, type SearchHit } from '../api'
 import { Banner, Button, EmptyState, Field, Input, Modal, Select } from '../ui'
 import { DocTree, type DropSpec } from '../components/DocTree'
 import { DocEditor } from '../components/DocEditor'
+import { HomeDocRow } from '../components/HomeDocRow'
 
 interface CreateTarget {
   parentId: string | null
@@ -59,6 +61,7 @@ export function DocumentationPage() {
   const [createTarget, setCreateTarget] = useState<CreateTarget | null>(null)
   const [createType, setCreateType] = useState<NodeType>('PAGE')
   const [createTitle, setCreateTitle] = useState('')
+  const [creatingHome, setCreatingHome] = useState(false)
   const [moving, setMoving] = useState<DocNode | null>(null)
   const [moveParent, setMoveParent] = useState<string>('')
   /** Bumped after a move so the editor remounts and shows the node's new path. */
@@ -86,6 +89,48 @@ export function DocumentationPage() {
       setExpanded(new Set(nodes.filter((node) => node.kind === 'folder').map((node) => node.id)))
     })
   }, [loadTree])
+
+  /*
+   * The home document is a root node like any other as far as the backend is
+   * concerned, but it is not a section: it is the page the sections are listed
+   * on. So it is lifted out of `tree` here and pinned above it, which also
+   * keeps it out of the drag-and-drop ordering it has no place in.
+   */
+  const homeNode = useMemo(
+    () => tree.find((node) => node.kind === 'page' && node.slug === HOME_SLUG) ?? null,
+    [tree],
+  )
+  const sectionTree = useMemo(() => tree.filter((node) => node.id !== homeNode?.id), [tree, homeNode])
+
+  /**
+   * Creates the home document, seeded with the text the portal is already
+   * rendering from its built-in defaults — so the first save is a starting
+   * point rather than a blank page, and nothing on `/docs` changes until it is
+   * published.
+   */
+  async function createHome() {
+    setCreatingHome(true)
+    const defaults = homeDefaults()
+    try {
+      const node = await api.docs.create({
+        type: 'PAGE',
+        parentId: null,
+        title: defaults.title,
+        slug: HOME_SLUG,
+        description: defaults.intro,
+        metadata: {
+          [HOME_META.eyebrow]: defaults.eyebrow,
+          [HOME_META.sectionsHeading]: defaults.sectionsHeading,
+        },
+      })
+      await loadTree()
+      setSelectedId(node.id)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set up the Documentation Home page.')
+    } finally {
+      setCreatingHome(false)
+    }
+  }
 
   /** Flat list of folders, for the "move to" and "create in" pickers. */
   const folders = useMemo(() => {
@@ -339,8 +384,18 @@ export function DocumentationPage() {
             ) : loading ? (
               <p className="px-2 py-6 text-center text-ui text-[var(--color-muted)]">Loading tree…</p>
             ) : (
-              <DocTree
-                nodes={tree}
+              <>
+                {/* Pinned above the tree, and above the filter's reach: it is
+                    one fixed row, so hunting for it is never the problem. */}
+                <HomeDocRow
+                  node={homeNode}
+                  selected={homeNode != null && homeNode.id === selectedId}
+                  busy={creatingHome}
+                  onSelect={() => homeNode && setSelectedId(homeNode.id)}
+                  onCreate={() => void createHome()}
+                />
+                <DocTree
+                  nodes={sectionTree}
                 filter={filter.trim().toLowerCase()}
                 selectedId={selectedId}
                 expanded={expanded}
@@ -356,8 +411,9 @@ export function DocumentationPage() {
                   setMoving(node)
                   setMoveParent(node.parentId ?? '')
                 }}
-                onDelete={(node) => void remove(node)}
-              />
+                  onDelete={(node) => void remove(node)}
+                />
+              </>
             )}
           </div>
         </aside>

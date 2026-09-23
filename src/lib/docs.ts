@@ -21,6 +21,7 @@ import { API_BASE_URL } from './apiBase'
 import { isFolder } from './docs.types'
 import { normalizePath } from './routing'
 import { folderLabels, hiddenFolderSlugs, hiddenFolderTitles } from '@/content/nav.config'
+import { HOME_SLUG, homeDefaults, homeDocFrom, type HomeDoc, type HomeNodeLike } from './homeDoc'
 
 /** One node of the backend's `/api/docs/index` payload. */
 interface ApiNode {
@@ -55,6 +56,16 @@ let docs: DocIndex = EMPTY
 let version = 0
 let payload = ''
 const listeners = new Set<() => void>()
+
+/*
+ * The home document rides in the same store as the index: it is fetched in the
+ * same round trip, versioned by the same counter and refreshed by the same
+ * visibility trigger, so `/docs` picks up a publish exactly when every other
+ * surface does. Keeping it synchronous here is what lets `DocsHome` stay a
+ * plain render with no loading state and no flash of placeholder text.
+ */
+let home: HomeDoc = homeDefaults()
+let homeFailed = false
 
 export function subscribeDocs(listener: () => void): () => void {
   listeners.add(listener)
@@ -121,9 +132,16 @@ const parentSlug = (path: string): string =>
 const sectionLabel = (path: string, title: string): string =>
   folderTitle(parentSlug(path), title)
 
-/** True for a node that must not appear in the public portal. */
+/**
+ * True for a node that must not appear in the public portal.
+ *
+ * The home document is a root-level page whose content is rendered at `/docs`
+ * by `DocsHome`, so it is dropped here: out of the sidebar, out of the search
+ * corpus, and out of the prev/next spine, where it would otherwise sit as a
+ * stray entry between two sections.
+ */
 function isHidden(node: ApiNode): boolean {
-  if (node.kind !== 'folder') return false
+  if (node.kind === 'page') return node.slug === HOME_SLUG
   const slug = node.slug.toLowerCase()
   const title = displayTitle(node.title).toLowerCase()
   return hiddenFolderSlugs.includes(slug) || hiddenFolderTitles.includes(title)
@@ -249,15 +267,31 @@ async function get<T>(path: string): Promise<T> {
  * backend is unreachable so the boot caller can show a real error.
  */
 export async function loadDocsIndex(): Promise<void> {
-  inFlight ??= get<{ tree: ApiNode[]; searchEntries?: SearchEntry[] }>('/api/docs/index').finally(() => {
+  inFlight ??= Promise.all([
+    get<{ tree: ApiNode[]; searchEntries?: SearchEntry[] }>('/api/docs/index'),
+    /*
+     * The home document is optional in every sense: the portal shipped without
+     * it, a CMS that has not had one created yet answers 404, and `/docs` is
+     * only one of the portal's routes. So its failure is recorded and swallowed
+     * rather than rejected — rejecting would take down the whole portal for a
+     * page the reader may not even be on, and `homeDefaults()` renders the same
+     * masthead the page was hardcoded with.
+     */
+    get<HomeNodeLike>(`/api/docs/${HOME_SLUG}`).then(
+      (node) => ({ node, failed: false }),
+      (error: unknown) => ({ node: null, failed: !isNotFound(error) }),
+    ),
+  ]).finally(() => {
     inFlight = null
   })
-  const data = await inFlight
+  const [data, homeResult] = await inFlight
 
-  const next = JSON.stringify(data)
+  const next = JSON.stringify([data, homeResult])
   if (next === payload) return
   payload = next
 
+  home = homeDocFrom(homeResult.node)
+  homeFailed = homeResult.failed
   docs = adapt(data.tree ?? [], data.searchEntries ?? [])
   // Bodies may have been edited alongside the tree; drop them rather than serve
   // a stale article on the next visit.
@@ -267,7 +301,27 @@ export async function loadDocsIndex(): Promise<void> {
 }
 
 /** Coalesces overlapping refreshes — visibility and focus can fire together. */
-let inFlight: Promise<{ tree: ApiNode[]; searchEntries?: SearchEntry[] }> | null = null
+let inFlight: Promise<
+  [{ tree: ApiNode[]; searchEntries?: SearchEntry[] }, { node: HomeNodeLike | null; failed: boolean }]
+> | null = null
+
+/**
+ * The home document simply not existing yet, as opposed to the backend being
+ * unreachable. The first is the expected state of a CMS where nobody has
+ * created it, and must not be reported to the reader as a failure.
+ */
+const isNotFound = (error: unknown): boolean =>
+  error instanceof Error && /\(404\)|not found/i.test(error.message)
+
+/** The Documentation Home text: CMS-managed, falling back field by field. */
+export const homeDoc = (): HomeDoc => home
+
+/**
+ * True when the home document could not be fetched at all — distinct from
+ * there not being one. `DocsHome` uses it to say the page is showing fallback
+ * text rather than silently pretending the defaults are published content.
+ */
+export const homeUnavailable = (): boolean => homeFailed
 
 export function getPage(pathname: string): DocPage | undefined {
   return docs.byPath[normalizePath(pathname)]
